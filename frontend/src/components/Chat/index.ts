@@ -1,6 +1,12 @@
 import type { Conversation, Message } from '../../types'
 import { state } from '../../state'
-import { api, submitFeedback, loadFeedback } from '../../api'
+import {
+  api,
+  submitFeedback,
+  loadFeedback,
+  updateConversation,
+  deleteConversation,
+} from '../../api'
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -188,7 +194,16 @@ export function renderChatView(): string {
           .map(
             (c) => `
           <li class="p-2 ${state.current?.id === c.id ? 'bg-blue-50' : ''}">
-            <button data-cid="${c.id}" class="w-full text-left">${c.title ?? 'Untitled'}<br><span class="text-xs text-gray-500">${new Date(c.updated_at).toLocaleString()}</span></button>
+            <div class="flex items-start gap-1">
+              <button data-cid="${c.id}" class="flex-1 min-w-0 text-left">
+                <span class="block truncate">${escapeHtml(c.title ?? 'Untitled')}</span>
+                <span class="text-xs text-gray-500">${new Date(c.updated_at).toLocaleString()}</span>
+              </button>
+              <div class="flex shrink-0 gap-0.5">
+                <button type="button" data-rename-cid="${c.id}" class="px-1.5 py-0.5 text-xs rounded hover:bg-gray-200" title="Rename">Rename</button>
+                <button type="button" data-delete-cid="${c.id}" class="px-1.5 py-0.5 text-xs rounded hover:bg-red-100 text-red-700" title="Delete">Delete</button>
+              </div>
+            </div>
           </li>
         `
           )
@@ -213,7 +228,8 @@ export function attachChatListeners(onRender: () => void): void {
     onRender()
   })
   document.querySelectorAll('[data-cid]').forEach((el) => {
-    el.addEventListener('click', async () => {
+    el.addEventListener('click', async (e) => {
+      if ((e.target as HTMLElement).closest('[data-rename-cid], [data-delete-cid]')) return
       const cid = Number((el as HTMLElement).dataset.cid)
       const c = state.conversations.find((x) => x.id === cid) || null
       state.current = c
@@ -222,6 +238,45 @@ export function attachChatListeners(onRender: () => void): void {
       onRender()
       await loadMessages()
       onRender()
+    })
+  })
+  document.querySelectorAll('[data-rename-cid]').forEach((el) => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const cid = Number((el as HTMLElement).dataset.renameCid)
+      const c = state.conversations.find((x) => x.id === cid)
+      if (!c) return
+      const newTitle = prompt('Rename conversation', c.title ?? 'Untitled')
+      if (newTitle === null) return
+      const title = newTitle.trim() || null
+      if (title === (c.title ?? null)) return
+      try {
+        const updated = await updateConversation(cid, { title })
+        const idx = state.conversations.findIndex((x) => x.id === cid)
+        if (idx >= 0) state.conversations[idx] = updated
+        onRender()
+      } catch {
+        alert('Failed to rename conversation.')
+      }
+    })
+  })
+  document.querySelectorAll('[data-delete-cid]').forEach((el) => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const cid = Number((el as HTMLElement).dataset.deleteCid)
+      if (!confirm('Delete this conversation? This cannot be undone.')) return
+      try {
+        await deleteConversation(cid)
+        state.conversations = state.conversations.filter((x) => x.id !== cid)
+        if (state.current?.id === cid) {
+          state.current = state.conversations[0] ?? null
+          state.messages = []
+          state.lastSeq = 0
+        }
+        onRender()
+      } catch {
+        alert('Failed to delete conversation.')
+      }
     })
   })
   document.querySelectorAll('[data-feedback]').forEach((el) => {

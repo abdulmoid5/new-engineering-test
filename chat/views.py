@@ -48,6 +48,20 @@ class ConversationDetailView(APIView):
         conv = get_object_or_404(Conversation, pk=pk)
         return Response(ConversationSerializer(conv).data)
 
+    def patch(self, request: Request, pk: int) -> Response:
+        conv = get_object_or_404(Conversation, pk=pk)
+        serializer = ConversationSerializer(
+            conv, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request: Request, pk: int) -> Response:
+        conv = get_object_or_404(Conversation, pk=pk)
+        conv.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class MessageListCreateView(APIView):
     def get(self, request: Request, pk: int) -> Response:

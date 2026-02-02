@@ -1,4 +1,4 @@
-import type { Feedback, Insights } from './types'
+import type { Conversation, Feedback, Insights } from './types'
 
 export async function api<T>(url: string, opts: RequestInit = {}): Promise<T> {
   const resp = await fetch(`/api/${url}`, {
@@ -31,4 +31,18 @@ export async function loadFeedback(messageId: number): Promise<Feedback[]> {
     `messages/${messageId}/feedback/`
   )
   return data.results
+}
+
+export async function updateConversation(
+  id: number,
+  payload: { title: string | null }
+): Promise<Conversation> {
+  return api<Conversation>(`conversations/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteConversation(id: number): Promise<void> {
+  await api(`conversations/${id}/`, { method: 'DELETE' })
 }
