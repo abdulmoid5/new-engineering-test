@@ -86,6 +86,8 @@ async function sendMessage(text: string) {
   render()
   scrollChatToBottom()
 
+  await new Promise<void>((r) => requestAnimationFrame(() => r()))
+
   try {
     const res = await api<{ user_message: Message; ai_message: Message }>(
       `conversations/${state.current.id}/messages/`,
