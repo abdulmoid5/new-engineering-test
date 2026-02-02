@@ -1,5 +1,5 @@
-import { state } from './state'
-import { fetchInsights } from './api'
+import { state } from '../../state'
+import { fetchInsights } from '../../api'
 
 export function renderInsightsView(): string {
   const i = state.insights

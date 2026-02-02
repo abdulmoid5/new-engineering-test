@@ -8,8 +8,8 @@ import {
   loadConversations,
   loadMessages,
   startPolling,
-} from './chat'
-import { renderInsightsView, refreshInsights } from './insights'
+} from './components/Chat'
+import { renderInsightsView, refreshInsights } from './components/Insights'
 
 const root = document.getElementById('root')!
 

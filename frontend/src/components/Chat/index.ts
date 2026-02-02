@@ -1,6 +1,6 @@
-import type { Conversation, Message } from './types'
-import { state } from './state'
-import { api, submitFeedback, loadFeedback } from './api'
+import type { Conversation, Message } from '../../types'
+import { state } from '../../state'
+import { api, submitFeedback, loadFeedback } from '../../api'
 
 function escapeHtml(s: string): string {
   return s.replace(
