@@ -21,6 +21,7 @@ const state = {
   messages: [] as Message[],
   lastSeq: 0,
   pollTimer: 0 as any,
+  sending: false,
 }
 
 async function api<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -67,7 +68,9 @@ async function loadMessages() {
 }
 
 async function sendMessage(text: string) {
-  if (!state.current) return
+  if (!state.current || state.sending) return
+  state.sending = true
+  render()
   const tempId = `tmp-${Date.now()}`
   const optimistic: Message = {
     id: -1,
@@ -119,6 +122,9 @@ async function sendMessage(text: string) {
       /* use msg as-is */
     }
     alert(detail || 'Failed to send message. Please try again.')
+  } finally {
+    state.sending = false
+    render()
   }
 }
 
@@ -136,15 +142,17 @@ function scrollChatToBottom() {
 }
 
 function dedupeMessagesById() {
-  const seen = new Set<number>()
+  const seen = new Set<number | string>()
   state.messages = state.messages.filter((m) => {
-    if (m.id >= 0 && seen.has(m.id)) return false
-    if (m.id >= 0) seen.add(m.id)
+    const id = typeof m.id === 'number' ? m.id : Number(m.id)
+    if (id >= 0 && seen.has(id)) return false
+    if (id >= 0) seen.add(id)
     return true
   })
 }
 
 function render() {
+  dedupeMessagesById()
   root.innerHTML = `
   <div class="mx-auto max-w-5xl grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
     <aside class="md:col-span-1 space-y-2">
@@ -177,8 +185,8 @@ function render() {
           .join('')}
       </div>
       <form id="composer" class="mt-3 flex gap-2">
-        <textarea id="input" class="textarea flex-1" rows="3" placeholder="Type a message (max 1000 chars)"></textarea>
-        <button class="btn btn-primary" type="submit">Send</button>
+        <textarea id="input" class="textarea flex-1" rows="3" placeholder="Type a message (max 1000 chars)" ${state.sending ? 'disabled' : ''}></textarea>
+        <button class="btn btn-primary" type="submit" ${state.sending ? 'disabled' : ''}>Send</button>
       </form>
     </main>
   </div>`
@@ -200,6 +208,7 @@ function render() {
   const form = document.getElementById('composer') as HTMLFormElement
   form?.addEventListener('submit', async (e) => {
     e.preventDefault()
+    if (state.sending) return
     const input = document.getElementById('input') as HTMLTextAreaElement
     const text = input.value.trim()
     if (!text) return
