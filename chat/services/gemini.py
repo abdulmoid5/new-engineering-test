@@ -17,7 +17,7 @@ class GeminiServiceError(RuntimeError):
 
 
 def _get_model_name() -> str:
-    return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    return os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def _build_contents(history: List[Dict[str, str]], prompt: str) -> List[types.Content]:

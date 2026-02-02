@@ -84,5 +84,5 @@ REST_FRAMEWORK = {
 }
 
 # Feature flags / Gemini
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
