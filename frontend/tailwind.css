@@ -21,3 +21,59 @@
 .msg-ai {
   @apply bg-gray-50 border border-gray-200;
 }
+
+/* AI message Markdown (safe HTML from marked + DOMPurify) */
+.message-markdown p {
+  @apply my-1.5;
+}
+.message-markdown p:first-child {
+  @apply mt-0;
+}
+.message-markdown p:last-child {
+  @apply mb-0;
+}
+.message-markdown ul,
+.message-markdown ol {
+  @apply my-1.5 pl-6;
+}
+.message-markdown ul {
+  @apply list-disc;
+}
+.message-markdown ol {
+  @apply list-decimal;
+}
+.message-markdown li {
+  @apply my-0.5;
+}
+.message-markdown code {
+  @apply px-1 py-0.5 rounded bg-gray-200 text-sm font-mono;
+}
+.message-markdown pre {
+  @apply my-2 p-2 rounded bg-gray-100 overflow-x-auto;
+}
+.message-markdown pre code {
+  @apply p-0 bg-transparent;
+}
+.message-markdown strong {
+  @apply font-semibold;
+}
+.message-markdown a {
+  @apply text-blue-600 underline hover:text-blue-800;
+}
+.message-markdown blockquote {
+  @apply border-l-4 border-gray-300 pl-3 my-1.5 text-gray-700;
+}
+.message-markdown h1,
+.message-markdown h2,
+.message-markdown h3 {
+  @apply font-semibold mt-2 mb-1;
+}
+.message-markdown h1 {
+  @apply text-lg;
+}
+.message-markdown h2 {
+  @apply text-base;
+}
+.message-markdown hr {
+  @apply my-2 border-gray-200;
+}

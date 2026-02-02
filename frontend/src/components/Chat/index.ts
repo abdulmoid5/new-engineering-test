@@ -7,6 +7,7 @@ import {
   updateConversation,
   deleteConversation,
 } from '../../api'
+import { renderMarkdownSafe } from '../../markdown'
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -174,10 +175,18 @@ function renderMessage(m: Message): string {
               <button type="button" data-feedback data-mid="${m.id}" data-value="-1" class="px-2 py-1 rounded text-sm ${feedback === -1 ? 'bg-red-200' : 'bg-gray-100 hover:bg-gray-200'}">👎</button>
             </div>`
       : ''
+  const bodyContent =
+    m.role === 'ai'
+      ? renderMarkdownSafe(m.text)
+      : escapeHtml(m.text)
+  const bodyClass =
+    m.role === 'ai'
+      ? 'message-markdown break-words'
+      : 'whitespace-pre-wrap break-words'
   return `
           <div class="p-3 rounded ${m.role === 'user' ? 'msg-user' : 'msg-ai'}">
             <div class="text-xs text-gray-500 mb-1">${m.role.toUpperCase()} • ${new Date(m.created_at).toLocaleTimeString()}</div>
-            <div class="whitespace-pre-wrap">${escapeHtml(m.text)}</div>
+            <div class="${bodyClass}">${bodyContent}</div>
             ${thumbs}
           </div>`
 }
