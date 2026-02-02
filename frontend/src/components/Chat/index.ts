@@ -335,7 +335,6 @@ export function attachChatListeners(onRender: () => void): void {
     el.addEventListener('click', async () => {
       const mid = Number((el as HTMLElement).dataset.mid)
       const value = Number((el as HTMLElement).dataset.value)
-      if (state.feedbackByMessageId[mid] !== undefined) return
       try {
         await submitFeedback(mid, value)
         state.feedbackByMessageId[mid] = value

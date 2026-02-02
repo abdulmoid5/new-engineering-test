@@ -126,6 +126,11 @@ class MessageFeedbackCreateView(APIView):
         serializer = CreateFeedbackSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         value: int = serializer.validated_data["value"]
+        existing = message.feedbacks.order_by("-created_at").first()
+        if existing is not None:
+            existing.value = value
+            existing.save(update_fields=["value"])
+            return Response(FeedbackSerializer(existing).data, status=status.HTTP_200_OK)
         feedback = Feedback.objects.create(message=message, value=value)
         return Response(
             FeedbackSerializer(feedback).data,
