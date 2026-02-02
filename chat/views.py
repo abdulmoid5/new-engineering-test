@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from django.shortcuts import get_object_or_404
@@ -86,6 +87,8 @@ class MessageListCreateView(APIView):
             reply = gemini.generate_reply(history=history, prompt=text, timeout_s=10)
         except gemini.GeminiServiceError as e:
             # Remove user message to keep integrity if AI fails? We keep it and surface 502.
+            logger = logging.getLogger(__name__)
+            logger.warning("Gemini service error (502): %s", e)
             return Response({"detail": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
         ai_msg = Message.objects.create(conversation=conv, role=Message.ROLE_AI, text=reply)

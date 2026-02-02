@@ -104,7 +104,15 @@ async function sendMessage(text: string) {
     const idx = state.messages.findIndex((m) => m.tempId === tempId)
     if (idx >= 0) state.messages.splice(idx, 1)
     render()
-    alert('Failed to send message. Please try again.')
+    const msg = err instanceof Error ? err.message : 'Failed to send message.'
+    let detail = msg
+    try {
+      const parsed = JSON.parse(msg)
+      if (parsed && typeof parsed.detail === 'string') detail = parsed.detail
+    } catch {
+      /* use msg as-is */
+    }
+    alert(detail || 'Failed to send message. Please try again.')
   }
 }
 
