@@ -10,4 +10,5 @@ export const state = {
   view: 'chat' as View,
   feedbackByMessageId: {} as Record<number, number>,
   insights: null as Insights | null,
+  editingConversationId: null as number | null,
 }

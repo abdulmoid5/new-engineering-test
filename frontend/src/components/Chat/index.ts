@@ -192,20 +192,27 @@ export function renderChatView(): string {
       <ul class="border rounded divide-y bg-white">
         ${state.conversations
           .map(
-            (c) => `
+            (c) => {
+              const isEditing = state.editingConversationId === c.id
+              const displayTitle = c.title ?? 'Untitled'
+              return `
           <li class="p-2 ${state.current?.id === c.id ? 'bg-blue-50' : ''}">
             <div class="flex items-start gap-1">
+              ${isEditing ? `
+              <input type="text" data-edit-cid="${c.id}" data-edit-initial="${escapeHtml(c.title ?? '')}" value="${escapeHtml(c.title ?? '')}" class="input flex-1 min-w-0 text-sm py-1 px-2" placeholder="Conversation name" />`
+              : `
               <button data-cid="${c.id}" class="flex-1 min-w-0 text-left">
-                <span class="block truncate">${escapeHtml(c.title ?? 'Untitled')}</span>
+                <span class="block truncate">${escapeHtml(displayTitle)}</span>
                 <span class="text-xs text-gray-500">${new Date(c.updated_at).toLocaleString()}</span>
-              </button>
+              </button>`}
               <div class="flex shrink-0 gap-0.5">
-                <button type="button" data-rename-cid="${c.id}" class="px-1.5 py-0.5 text-xs rounded hover:bg-gray-200" title="Rename">Rename</button>
+                <button type="button" data-rename-cid="${c.id}" class="px-1.5 py-0.5 text-xs rounded hover:bg-gray-200" title="Rename">${isEditing ? 'Cancel' : 'Rename'}</button>
                 <button type="button" data-delete-cid="${c.id}" class="px-1.5 py-0.5 text-xs rounded hover:bg-red-100 text-red-700" title="Delete">Delete</button>
               </div>
             </div>
           </li>
         `
+            }
           )
           .join('')}
       </ul>
@@ -241,24 +248,58 @@ export function attachChatListeners(onRender: () => void): void {
     })
   })
   document.querySelectorAll('[data-rename-cid]').forEach((el) => {
-    el.addEventListener('click', async (e) => {
+    el.addEventListener('click', (e) => {
       e.stopPropagation()
       const cid = Number((el as HTMLElement).dataset.renameCid)
+      if (state.editingConversationId === cid) {
+        state.editingConversationId = null
+        onRender()
+        return
+      }
+      state.editingConversationId = cid
+      onRender()
+      const input = document.querySelector<HTMLInputElement>(
+        `input[data-edit-cid="${cid}"]`
+      )
+      input?.focus()
+    })
+  })
+  document.querySelectorAll('input[data-edit-cid]').forEach((el) => {
+    const input = el as HTMLInputElement
+    const cid = Number(input.dataset.editCid)
+    const saveRename = async () => {
+      const title = input.value.trim() || null
       const c = state.conversations.find((x) => x.id === cid)
       if (!c) return
-      const newTitle = prompt('Rename conversation', c.title ?? 'Untitled')
-      if (newTitle === null) return
-      const title = newTitle.trim() || null
-      if (title === (c.title ?? null)) return
+      if (title === (c.title ?? null)) {
+        state.editingConversationId = null
+        onRender()
+        return
+      }
       try {
         const updated = await updateConversation(cid, { title })
         const idx = state.conversations.findIndex((x) => x.id === cid)
         if (idx >= 0) state.conversations[idx] = updated
+        state.editingConversationId = null
         onRender()
       } catch {
         alert('Failed to rename conversation.')
       }
+    }
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        saveRename()
+      }
+      if (e.key === 'Escape') {
+        state.editingConversationId = null
+        onRender()
+      }
     })
+    input.addEventListener('blur', () => {
+      saveRename()
+    })
+    input.focus()
   })
   document.querySelectorAll('[data-delete-cid]').forEach((el) => {
     el.addEventListener('click', async (e) => {
