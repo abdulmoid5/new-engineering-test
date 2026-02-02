@@ -1,4 +1,4 @@
-// Minimal client: conversations list, chat view, polling
+// Minimal client: conversations list, chat view, polling, feedback, insights
 import '../tailwind.css'
 
 type Conversation = { id: number; title: string | null; created_at: string; updated_at: string }
@@ -13,6 +13,20 @@ type Message = {
   pending?: boolean
 }
 
+type Feedback = {
+  id: number
+  message: number
+  value: number
+  created_at: string
+}
+
+type Insights = {
+  total_feedback_count: number
+  average_value: number | null
+  thumbs_up_count: number
+  thumbs_down_count: number
+}
+
 const root = document.getElementById('root')!
 
 const state = {
@@ -22,6 +36,9 @@ const state = {
   lastSeq: 0,
   pollTimer: 0 as any,
   sending: false,
+  view: 'chat' as 'chat' | 'insights',
+  feedbackByMessageId: {} as Record<number, number>,
+  insights: null as Insights | null,
 }
 
 async function api<T>(url: string, opts: RequestInit = {}): Promise<T> {
@@ -32,6 +49,17 @@ async function api<T>(url: string, opts: RequestInit = {}): Promise<T> {
   })
   if (!resp.ok) throw new Error(await resp.text())
   return resp.json()
+}
+
+async function submitFeedback(messageId: number, value: number): Promise<Feedback> {
+  return api<Feedback>(`messages/${messageId}/feedback/`, {
+    method: 'POST',
+    body: JSON.stringify({ value }),
+  })
+}
+
+async function fetchInsights(): Promise<Insights> {
+  return api<Insights>('insights/')
 }
 
 async function loadConversations() {
@@ -153,9 +181,26 @@ function dedupeMessagesById() {
   })
 }
 
-function render() {
-  dedupeMessagesById()
-  root.innerHTML = `
+function renderMessage(m: Message): string {
+  const feedback = state.feedbackByMessageId[m.id]
+  const thumbs =
+    m.role === 'ai' && m.id >= 0
+      ? `
+            <div class="flex gap-1 mt-2">
+              <button type="button" data-feedback data-mid="${m.id}" data-value="1" class="px-2 py-1 rounded text-sm ${feedback === 1 ? 'bg-green-200' : 'bg-gray-100 hover:bg-gray-200'}">👍</button>
+              <button type="button" data-feedback data-mid="${m.id}" data-value="-1" class="px-2 py-1 rounded text-sm ${feedback === -1 ? 'bg-red-200' : 'bg-gray-100 hover:bg-gray-200'}">👎</button>
+            </div>`
+      : ''
+  return `
+          <div class="p-3 rounded ${m.role === 'user' ? 'msg-user' : 'msg-ai'}">
+            <div class="text-xs text-gray-500 mb-1">${m.role.toUpperCase()} • ${new Date(m.created_at).toLocaleTimeString()}</div>
+            <div class="whitespace-pre-wrap">${escapeHtml(m.text)}</div>
+            ${thumbs}
+          </div>`
+}
+
+function renderChatView(): string {
+  return `
   <div class="mx-auto max-w-5xl grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
     <aside class="md:col-span-1 space-y-2">
       <div class="flex gap-2 items-center">
@@ -175,16 +220,7 @@ function render() {
     </aside>
     <main class="md:col-span-3 flex flex-col h-[80vh]">
       <div id="chat-scroll" class="flex-1 overflow-auto border rounded bg-white p-3 space-y-3">
-        ${state.messages
-          .map(
-            (m) => `
-          <div class="p-3 rounded ${m.role === 'user' ? 'msg-user' : 'msg-ai'}">
-            <div class="text-xs text-gray-500 mb-1">${m.role.toUpperCase()} • ${new Date(m.created_at).toLocaleTimeString()}</div>
-            <div class="whitespace-pre-wrap">${escapeHtml(m.text)}</div>
-          </div>
-        `
-          )
-          .join('')}
+        ${state.messages.map(renderMessage).join('')}
       </div>
       <form id="composer" class="mt-3 flex gap-2">
         <textarea id="input" class="textarea flex-1" rows="3" placeholder="Type a message (max 1000 chars)" ${state.sending ? 'disabled' : ''}></textarea>
@@ -192,35 +228,96 @@ function render() {
       </form>
     </main>
   </div>`
+}
 
-  document.getElementById('new-conv')?.addEventListener('click', () => {
-    createConversation()
-  })
-  document.querySelectorAll('[data-cid]')?.forEach((el) => {
-    el.addEventListener('click', () => {
-      const cid = Number((el as HTMLElement).dataset.cid)
-      const c = state.conversations.find((x) => x.id === cid) || null
-      state.current = c
-      state.messages = []
-      state.lastSeq = 0
+function renderInsightsView(): string {
+  const i = state.insights
+  const rows = i
+    ? `
+    <tr><td class="p-2 border">Total feedback</td><td class="p-2 border">${i.total_feedback_count}</td></tr>
+    <tr><td class="p-2 border">Thumbs up</td><td class="p-2 border">${i.thumbs_up_count}</td></tr>
+    <tr><td class="p-2 border">Thumbs down</td><td class="p-2 border">${i.thumbs_down_count}</td></tr>
+    <tr><td class="p-2 border">Average value</td><td class="p-2 border">${i.average_value ?? '—'}</td></tr>`
+    : '<tr><td class="p-2 border" colspan="2">Loading…</td></tr>'
+  return `
+  <div class="mx-auto max-w-2xl p-4">
+    <h2 class="text-xl font-semibold mb-4">Feedback insights</h2>
+    <table class="w-full border border-gray-300 rounded overflow-hidden">
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`
+}
+
+function render() {
+  dedupeMessagesById()
+  const nav = `
+  <nav class="border-b bg-white px-4 py-2 flex gap-2">
+    <button type="button" data-nav="chat" class="px-3 py-1 rounded ${state.view === 'chat' ? 'bg-blue-100 font-medium' : 'hover:bg-gray-100'}">Chat</button>
+    <button type="button" data-nav="insights" class="px-3 py-1 rounded ${state.view === 'insights' ? 'bg-blue-100 font-medium' : 'hover:bg-gray-100'}">Insights</button>
+  </nav>`
+  if (state.view === 'insights' && state.insights === null) {
+    fetchInsights().then((data) => {
+      state.insights = data
       render()
-      loadMessages()
+    })
+  }
+
+  const content = state.view === 'insights' ? renderInsightsView() : renderChatView()
+  root.innerHTML = `<div class="min-h-screen bg-gray-50">${nav}${content}</div>`
+
+  document.querySelectorAll('[data-nav]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const view = (el as HTMLElement).dataset.nav as 'chat' | 'insights'
+      state.view = view
+      render()
     })
   })
-  const form = document.getElementById('composer') as HTMLFormElement
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    if (state.sending) return
-    const input = document.getElementById('input') as HTMLTextAreaElement
-    const text = input.value.trim()
-    if (!text) return
-    if (text.length > 1000) {
-      alert('Message too long')
-      return
-    }
-    input.value = ''
-    await sendMessage(text)
-  })
+
+  if (state.view === 'chat') {
+    document.getElementById('new-conv')?.addEventListener('click', () => {
+      createConversation()
+    })
+    document.querySelectorAll('[data-cid]')?.forEach((el) => {
+      el.addEventListener('click', () => {
+        const cid = Number((el as HTMLElement).dataset.cid)
+        const c = state.conversations.find((x) => x.id === cid) || null
+        state.current = c
+        state.messages = []
+        state.lastSeq = 0
+        render()
+        loadMessages()
+      })
+    })
+    document.querySelectorAll('[data-feedback]').forEach((el) => {
+      el.addEventListener('click', async () => {
+        const mid = Number((el as HTMLElement).dataset.mid)
+        const value = Number((el as HTMLElement).dataset.value)
+        if (state.feedbackByMessageId[mid] !== undefined) return
+        try {
+          await submitFeedback(mid, value)
+          state.feedbackByMessageId[mid] = value
+          state.insights = null
+          render()
+        } catch {
+          alert('Failed to submit feedback.')
+        }
+      })
+    })
+    const form = document.getElementById('composer') as HTMLFormElement
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (state.sending) return
+      const input = document.getElementById('input') as HTMLTextAreaElement
+      const text = input.value.trim()
+      if (!text) return
+      if (text.length > 1000) {
+        alert('Message too long')
+        return
+      }
+      input.value = ''
+      await sendMessage(text)
+    })
+  }
 }
 
 function escapeHtml(s: string) {
