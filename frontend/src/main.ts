@@ -36,9 +36,16 @@ function render(): void {
 
   root.innerHTML = `<div class="min-h-screen bg-gray-50">${nav}${content}</div>`
 
-  if (state.view === 'chat' && scrollTop > 0) {
+  if (state.view === 'chat') {
+    const savedScrollTop = scrollTop
     const chatScroll = document.getElementById('chat-scroll')
-    if (chatScroll) chatScroll.scrollTop = scrollTop
+    if (chatScroll) {
+      requestAnimationFrame(() => {
+        if (chatScroll.scrollTop !== savedScrollTop) {
+          chatScroll.scrollTop = savedScrollTop
+        }
+      })
+    }
   }
 
   document.querySelectorAll('[data-nav]').forEach((el) => {
