@@ -236,7 +236,8 @@ export function attachChatListeners(onRender: () => void): void {
   })
   document.querySelectorAll('[data-cid]').forEach((el) => {
     el.addEventListener('click', async (e) => {
-      if ((e.target as HTMLElement).closest('[data-rename-cid], [data-delete-cid]')) return
+      if (state.editingConversationId !== null) return
+      if ((e.target as HTMLElement).closest('[data-rename-cid], [data-delete-cid], input[data-edit-cid]')) return
       const cid = Number((el as HTMLElement).dataset.cid)
       const c = state.conversations.find((x) => x.id === cid) || null
       state.current = c
