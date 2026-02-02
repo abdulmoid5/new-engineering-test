@@ -236,16 +236,17 @@ export function attachChatListeners(onRender: () => void): void {
   })
   document.querySelectorAll('[data-cid]').forEach((el) => {
     el.addEventListener('click', async (e) => {
-      if (state.editingConversationId !== null) return
       if ((e.target as HTMLElement).closest('[data-rename-cid], [data-delete-cid], input[data-edit-cid]')) return
       const cid = Number((el as HTMLElement).dataset.cid)
       const c = state.conversations.find((x) => x.id === cid) || null
+      state.editingConversationId = null
       state.current = c
       state.messages = []
       state.lastSeq = 0
       onRender()
       await loadMessages()
       onRender()
+      scrollChatToBottom()
     })
   })
   document.querySelectorAll('[data-rename-cid]').forEach((el) => {
