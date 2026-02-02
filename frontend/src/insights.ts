@@ -7,8 +7,7 @@ export function renderInsightsView(): string {
     ? `
     <tr><td class="p-2 border">Total feedback</td><td class="p-2 border">${i.total_feedback_count}</td></tr>
     <tr><td class="p-2 border">Thumbs up</td><td class="p-2 border">${i.thumbs_up_count}</td></tr>
-    <tr><td class="p-2 border">Thumbs down</td><td class="p-2 border">${i.thumbs_down_count}</td></tr>
-    <tr><td class="p-2 border">Average value</td><td class="p-2 border">${i.average_value ?? '—'}</td></tr>`
+    <tr><td class="p-2 border">Thumbs down</td><td class="p-2 border">${i.thumbs_down_count}</td></tr>`
     : '<tr><td class="p-2 border" colspan="2">Loading…</td></tr>'
   return `
   <div class="mx-auto max-w-2xl p-4">

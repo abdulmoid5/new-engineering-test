@@ -25,7 +25,6 @@ export type Feedback = {
 
 export type Insights = {
   total_feedback_count: number
-  average_value: number | null
   thumbs_up_count: number
   thumbs_down_count: number
 }
