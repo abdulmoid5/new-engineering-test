@@ -4,18 +4,19 @@ import logging
 from typing import Any
 
 from django.shortcuts import get_object_or_404
-from django.db.models import QuerySet
-from django.conf import settings
+from django.db.models import QuerySet, Count, Avg, Q
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Conversation, Message
+from .models import Conversation, Message, Feedback
 from .serializers import (
     ConversationSerializer,
     MessageSerializer,
     CreateMessageSerializer,
+    FeedbackSerializer,
+    CreateFeedbackSerializer,
 )
 from .services import gemini
 
@@ -96,3 +97,32 @@ class MessageListCreateView(APIView):
             "user_message": MessageSerializer(user_msg).data,
             "ai_message": MessageSerializer(ai_msg).data,
         }, status=status.HTTP_201_CREATED)
+
+
+class MessageFeedbackCreateView(APIView):
+    def post(self, request: Request, pk: int) -> Response:
+        message = get_object_or_404(Message, pk=pk)
+        serializer = CreateFeedbackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        value: int = serializer.validated_data["value"]
+        feedback = Feedback.objects.create(message=message, value=value)
+        return Response(
+            FeedbackSerializer(feedback).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class InsightsView(APIView):
+    def get(self, request: Request) -> Response:
+        stats = Feedback.objects.aggregate(
+            total=Count("id"),
+            avg_value=Avg("value"),
+            thumbs_up=Count("id", filter=Q(value=1)),
+            thumbs_down=Count("id", filter=Q(value=-1)),
+        )
+        return Response({
+            "total_feedback_count": stats["total"] or 0,
+            "average_value": round(stats["avg_value"], 2) if stats["avg_value"] is not None else None,
+            "thumbs_up_count": stats["thumbs_up"] or 0,
+            "thumbs_down_count": stats["thumbs_down"] or 0,
+        })
