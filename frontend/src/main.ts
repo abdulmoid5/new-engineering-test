@@ -60,6 +60,7 @@ async function loadMessages() {
   if (data.results.length) {
     state.messages.push(...data.results)
     state.lastSeq = data.lastSeq
+    dedupeMessagesById()
     render()
     scrollChatToBottom()
   }
@@ -94,10 +95,15 @@ async function sendMessage(text: string) {
     if (idx >= 0) {
       state.messages.splice(idx, 1, res.user_message)
     } else {
-      state.messages.push(res.user_message)
+      const hasUser = state.messages.some((m) => m.id === res.user_message.id)
+      if (!hasUser) state.messages.push(res.user_message)
     }
-    state.messages.push(res.ai_message)
+    const hasAi = state.messages.some(
+      (m) => m.id === res.ai_message.id || (m.sequence === res.ai_message.sequence && m.role === 'ai')
+    )
+    if (!hasAi) state.messages.push(res.ai_message)
     state.lastSeq = res.ai_message.sequence
+    dedupeMessagesById()
     render()
     scrollChatToBottom()
   } catch (err) {
@@ -127,6 +133,15 @@ function stopPolling() {
 function scrollChatToBottom() {
   const c = document.getElementById('chat-scroll')
   if (c) c.scrollTop = c.scrollHeight
+}
+
+function dedupeMessagesById() {
+  const seen = new Set<number>()
+  state.messages = state.messages.filter((m) => {
+    if (m.id >= 0 && seen.has(m.id)) return false
+    if (m.id >= 0) seen.add(m.id)
+    return true
+  })
 }
 
 function render() {
