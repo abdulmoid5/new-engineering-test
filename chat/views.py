@@ -100,6 +100,13 @@ class MessageListCreateView(APIView):
 
 
 class MessageFeedbackCreateView(APIView):
+    def get(self, request: Request, pk: int) -> Response:
+        message = get_object_or_404(Message, pk=pk)
+        feedbacks = message.feedbacks.all().order_by("-created_at")
+        return Response({
+            "results": FeedbackSerializer(feedbacks, many=True).data,
+        })
+
     def post(self, request: Request, pk: int) -> Response:
         message = get_object_or_404(Message, pk=pk)
         serializer = CreateFeedbackSerializer(data=request.data)

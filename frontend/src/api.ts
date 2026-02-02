@@ -23,3 +23,12 @@ export async function submitFeedback(
 export async function fetchInsights(): Promise<Insights> {
   return api<Insights>('insights/')
 }
+
+export type FeedbackListResponse = { results: Feedback[] }
+
+export async function loadFeedback(messageId: number): Promise<Feedback[]> {
+  const data = await api<FeedbackListResponse>(
+    `messages/${messageId}/feedback/`
+  )
+  return data.results
+}

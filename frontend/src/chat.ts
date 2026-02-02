@@ -1,6 +1,6 @@
 import type { Conversation, Message } from './types'
 import { state } from './state'
-import { api, submitFeedback } from './api'
+import { api, submitFeedback, loadFeedback } from './api'
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -45,6 +45,23 @@ export async function createConversation(title?: string): Promise<void> {
   state.lastSeq = 0
 }
 
+async function loadFeedbackForCurrentMessages(): Promise<void> {
+  const aiMessageIds = state.messages
+    .filter((m) => m.role === 'ai' && m.id >= 0)
+    .map((m) => m.id)
+  if (aiMessageIds.length === 0) return
+  const results = await Promise.all(
+    aiMessageIds.map((id) => loadFeedback(id))
+  )
+  aiMessageIds.forEach((messageId, i) => {
+    const feedbacks = results[i]
+    const latest = feedbacks[0]
+    if (latest !== undefined) {
+      state.feedbackByMessageId[messageId] = latest.value
+    }
+  })
+}
+
 export async function loadMessages(): Promise<void> {
   if (!state.current) return
   const data = await api<{ results: Message[]; lastSeq: number }>(
@@ -54,6 +71,7 @@ export async function loadMessages(): Promise<void> {
     state.messages.push(...data.results)
     state.lastSeq = data.lastSeq
     dedupeMessagesById()
+    await loadFeedbackForCurrentMessages()
     scrollChatToBottom()
   }
 }
