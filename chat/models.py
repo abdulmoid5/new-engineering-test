@@ -57,3 +57,28 @@ class Message(models.Model):
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.conversation_id}#{self.sequence}:{self.role}"
 
+
+class Feedback(models.Model):
+    """
+    User feedback on a message. Use value for thumbs (-1=down, 1=up) or ratings (1-5).
+    """
+    message = models.ForeignKey(
+        Message,
+        related_name="feedbacks",
+        on_delete=models.CASCADE,
+    )
+    value = models.SmallIntegerField(
+        help_text="Thumbs: -1=down, 1=up. Or rating 1-5.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "id"]
+        indexes = [
+            models.Index(fields=["message", "-created_at"]),
+        ]
+        verbose_name_plural = "feedbacks"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"Feedback {self.value} on message {self.message_id}"
+
