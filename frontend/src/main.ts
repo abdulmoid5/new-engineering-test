@@ -27,7 +27,19 @@ function render(): void {
 
   const content =
     state.view === 'insights' ? renderInsightsView() : renderChatView()
+
+  let scrollTop = 0
+  if (state.view === 'chat') {
+    const chatScroll = document.getElementById('chat-scroll')
+    if (chatScroll) scrollTop = chatScroll.scrollTop
+  }
+
   root.innerHTML = `<div class="min-h-screen bg-gray-50">${nav}${content}</div>`
+
+  if (state.view === 'chat' && scrollTop > 0) {
+    const chatScroll = document.getElementById('chat-scroll')
+    if (chatScroll) chatScroll.scrollTop = scrollTop
+  }
 
   document.querySelectorAll('[data-nav]').forEach((el) => {
     el.addEventListener('click', () => {
